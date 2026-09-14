@@ -1,0 +1,50 @@
+name: Create Release
+
+# Manual only -- run this from the Actions tab after merging PR(s) into master
+# you want to ship. Builds a clean, ready-to-play package with `ant bin` (no
+# repo clutter: no src/, doc/, .git, build.xml, etc.) and publishes it as a
+# GitHub Release with the given version as the tag.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g. 1.0.1) -- becomes the git tag and release title"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install Ant
+        run: sudo apt-get update && sudo apt-get install -y ant
+
+      - name: Build client (ant bin)
+        run: ant bin
+
+      # Zipped from *inside* bin/ so Play.bat, hafen.jar, res/, etc. land at
+      # the root of the extracted zip -- no extra wrapper folder to navigate.
+      - name: Package release zip
+        run: |
+          cd bin
+          zip -r "../Hurricane-H4D-${{ inputs.version }}.zip" .
+
+      - name: Create tag + GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ inputs.version }}" \
+            "Hurricane-H4D-${{ inputs.version }}.zip" \
+            --title "${{ inputs.version }}" \
+            --target "${{ github.sha }}" \
+            --generate-notes

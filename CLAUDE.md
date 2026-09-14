@@ -12,6 +12,7 @@ doc) so only the relevant piece gets read for a given task. Check that index whe
 touches:
 
 - Pulling in a new NightDawg release / merging upstream
+- Cutting a release of this fork for players
 - The bottom-right "Custom Client Extras" grid menu (toggles, bots, scripts)
 - Hand-building/editing a `.res` resource file
 - Sending a chat message from bot/script code

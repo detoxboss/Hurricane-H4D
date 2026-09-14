@@ -218,6 +218,7 @@
     <copy file="steam_appid.txt" todir="bin"/>
     <copy file="hafen.hl" todir="bin"/>
     <copy file="launcher.hl" todir="bin"/>
+    <copy file="Yapper_Bot_Phrases.txt" todir="bin"/>
     <chmod file="bin/hafen.jar" perm="a+x" />
     <copy todir="bin/MapIconsPresets" >
       <fileset dir="MapIconsPresets" includes="**"/>
