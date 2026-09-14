@@ -56,7 +56,7 @@ If the icon, name, or tooltip text ever need to change:
 ./doc/H4D-features/tools/New-MenuGridButton.ps1 `
   -IconDonorRes res/customclient/menugrid/OtherScriptsAndTools/CustomAlarmManager.res `
   -CategoryDonorRes res/customclient/menugrid/Bots/OceanScoutBot.res `
-  -Category Bots -ButtonId YapperBot -ActionName "Spitsburgen Yapper Bot" `
+  -Category Bots -ButtonId YapperBot -ActionName "Spitsbergen Yapper Bot" `
   -PaginaText "<tooltip body text>" `
   -OutDir res/customclient/menugrid/Bots
 ```

@@ -32,7 +32,7 @@
   ./New-MenuGridButton.ps1 `
     -IconDonorRes res/customclient/menugrid/OtherScriptsAndTools/CustomAlarmManager.res `
     -CategoryDonorRes res/customclient/menugrid/Bots/OceanScoutBot.res `
-    -Category Bots -ButtonId YapperBot -ActionName "Spitsburgen Yapper Bot" `
+    -Category Bots -ButtonId YapperBot -ActionName "Spitsbergen Yapper Bot" `
     -PaginaText "Some description.`n`nMore text." `
     -OutDir res/customclient/menugrid/Bots
 #>
