@@ -1924,6 +1924,7 @@ public class OptWnd extends Window {
 
 	public static HSlider systemMessagesListSizeSlider;
 	public static HSlider systemMessagesDurationSlider;
+	public static TextEntry yapperBotIntervalTextEntry;
 
 	public class ChatSettingsPanel extends Panel {
 		public ChatSettingsPanel(Panel back) {
@@ -2014,6 +2015,24 @@ public class OptWnd extends Window {
 					systemMessagesDurationLabel.settext(val + (val > 1 ? " seconds" : " second"));
 				}
 			}, prev.pos("bl").adds(0, 2));
+
+			prev = add(new Label("Yapper Bot Interval (seconds):"), prev.pos("bl").adds(0, 10));
+			add(yapperBotIntervalTextEntry = new TextEntry(UI.scale(50), String.format("%.1f", Utils.getprefd("yapperBotInterval", 1.0))){
+				{tooltip = RichText.render("How often the Yapper Bot sends a message while toggled on." +
+						"\nMust be a number with exactly one decimal place, e.g. 1.0, 0.3, 5.0." +
+						"\nInvalid entries are ignored and the previous value is kept.", UI.scale(300));}
+				protected void changed() {
+					try {
+						double val = Double.parseDouble(this.buf.line().trim());
+						val = Math.round(val * 10) / 10.0;
+						if(val > 0)
+							Utils.setprefd("yapperBotInterval", val);
+					} catch(NumberFormatException e) {
+						/* ND: Ignore invalid input, keep the last valid setting. */
+					}
+					super.changed();
+				}
+			}, prev.pos("ur").adds(6, 0));
 
 			Widget backButton;
 			add(backButton = new PButton(UI.scale(200), "Back", 27, back, "Advanced Settings"), prev.pos("bl").adds(0, 18).x(0));
