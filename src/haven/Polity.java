@@ -43,11 +43,23 @@ public abstract class Polity extends Widget {
 
     public abstract String type();
 
+    /* Dedupes the member-row draw-failure warning below so a row that fails
+     * every single frame (the common case - the list keeps trying to redraw
+     * it) doesn't flood the console/log into uselessness. Keyed by id+group
+     * so a later, different failure on the same member still gets logged. */
+    private static final Set<String> warnedBadRows = Collections.synchronizedSet(new HashSet<>());
+
 	public static final Text unk = Text.render("Unknown (Not Memorised)", new Color(140, 140, 140));
 	public static final Text self = Text.render(">> Yourself <<", new Color(255, 205, 0));
     public class Member {
 	public final Integer id;
 	public final int order;
+	/** This member's permission group, off the wire, or -1 if the server
+	 *  never sent one (this fork's Polity wire protocol was not observed
+	 *  to send a group arg on "add" before this port - see
+	 *  doc/H4D-features/group-permission-extension.md - so -1 may be the
+	 *  only value ever seen until live-tested). */
+	public int group = -1;
 
 	public Member(Integer id) {
 	    this.id = id;
@@ -57,6 +69,7 @@ public abstract class Polity extends Widget {
 	public Member(Member p) {
 	    this.id = p.id;
 	    this.order = p.order;
+	    this.group = p.group;
 	}
 
 	public Text rname() {
@@ -72,6 +85,16 @@ public abstract class Polity extends Widget {
 
 	public String name() {
 	    return(rname().text);
+	}
+
+	private Text grouptag = null;
+	private int grouptagGroup = Integer.MIN_VALUE;
+	Text grouptag() {
+	    if((grouptag == null) || (grouptagGroup != group)) {
+		grouptag = Text.render("[" + group + "]");
+		grouptagGroup = group;
+	    }
+	    return(grouptag);
 	}
     }
 
@@ -110,7 +133,32 @@ public abstract class Polity extends Widget {
 			return(true);
 		    }
 
-		    public void draw(GOut g) {item.draw(g);}
+		    public void draw(GOut g) {
+			try {
+			    item.draw(g);
+			} catch(Throwable t) {
+			    /* A server-resource Member subclass (e.g. Village's
+			     * VMember) can have its own internal fixed-size
+			     * array keyed by group, independent of anything in
+			     * this file - a group value outside what it expects
+			     * (e.g. from before Village's range was corrected
+			     * back to 0-7, or a value it never expected at all)
+			     * throws here. Swallow it and skip the row instead
+			     * of taking down the whole list/UI thread - see
+			     * doc/H4D-features/group-permission-extension.md. */
+			    g.chcolor();
+			    if(warnedBadRows.add(item.id + "|" + item.group))
+				new Warning(t, String.format("member row draw failed (id=%s, group=%d) - skipping row", item.id, item.group)).level(Warning.ERROR).issue();
+			}
+			/* Drawn here, in the wrapper, not inside Member.draw()
+			 * itself, so it always runs regardless of anything a
+			 * future Member subclass's own draw() override does. */
+			if(item.group >= 0) {
+			    g.chcolor(210, 210, 210, 255);
+			    g.aimage(item.grouptag().tex(), Coord.of(g.sz().x - UI.scale(5), UI.scale(10)), 1.0, 0.5);
+			    g.chcolor();
+			}
+		    }
 		});
 	}
 
@@ -221,7 +269,22 @@ public abstract class Polity extends Widget {
 	} else if(msg == "add") {
 	    Integer id = INT.of(args[0]);
 	    synchronized(this) {
-		add(parsememb(args, memb.get(id)));
+		Member pm = parsememb(args, memb.get(id));
+		/* args[1] confirmed live to be the member's real permission
+		 * group - watched it track a member's group through five live
+		 * reassignments (see doc/H4D-features/group-permission-extension.md).
+		 * args[2] is something else (stayed constant while args[1]
+		 * changed each time); left unread since nothing here needs it.
+		 * Set here, not inside parsememb(), because parsememb() is
+		 * overridable and Village's own override (which must exist,
+		 * to build its VMember subclass) doesn't run this - confirmed
+		 * live: item.group stayed -1 for every Village member despite
+		 * Polity.uimsg() itself definitely receiving the real value.
+		 * Applying it to the object parsememb() returns, whichever
+		 * override built it, is what actually executes. */
+		if(args.length > 1)
+		    pm.group = INT.of(args[1]);
+		add(pm);
 	    }
 	} else if(msg == "rm") {
 	    Integer id = INT.of(args[0]);

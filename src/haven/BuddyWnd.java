@@ -51,16 +51,55 @@ public class BuddyWnd extends Widget implements Iterable<BuddyWnd.Buddy> {
     public static final int offset = UI.scale(35);
     public static final Tex online = Resource.loadtex("gfx/hud/online");
     public static final Tex offline = Resource.loadtex("gfx/hud/offline");
-    public static final Color[] gc = new Color[] {
-	new Color(255, 255, 255),
-	new Color(44, 219, 44),
-	new Color(225, 0, 0),
-	new Color(77, 121, 255),
-	new Color(82, 242, 234),
-	new Color(255, 220, 0),
-	new Color(138, 77, 255),
-	new Color(255, 115, 0, 255),
-    };
+    /* Number of always-visible colour squares on the shared picker widget
+     * (GroupSelector) - this is the widget's own physical size/shape and
+     * must stay decoupled from gc[]'s length (see below), or the widget
+     * silently widens into a single giant row again. */
+    public static final int nquick = 8;
+    /* Total assignable permission groups offered by the companion dropdown
+     * for Kin/Village/Field-Cairn (see doc/H4D-features/group-permission-extension.md). */
+    public static final int ncolors = 40;
+    /* gc[] itself must be sized safely large (not just nquick or ncolors),
+     * because at least one server resource (Village's compiled VMember)
+     * reads this exact public field directly - `BuddyWnd.gc[group]` - with
+     * no bounds check of its own, for any group number the server actually
+     * sent it, independent of whatever range this port's own UI happens to
+     * expose. A client whose gc[] is only 8 long crashes rendering a
+     * perfectly valid server-assigned group >= 8; Nurgling2 avoids this by
+     * making gc[] 255 long from the start. Matched here for the same
+     * reason - confirmed live (Bug B, see doc) by reassigning a Village
+     * member's group and watching the resource's own ArrayIndexOutOfBoundsException
+     * index follow the assigned value exactly. */
+    public static final Color[] gc = buildColorTable();
+
+    private static Color[] buildColorTable() {
+	Color[] full = new Color[255];
+	/* Entries 0-7: byte-for-byte identical to the original palette -
+	 * nothing visibly changes for any existing square/resource still
+	 * only using this range. */
+	full[0] = new Color(255, 255, 255);
+	full[1] = new Color(44, 219, 44);
+	full[2] = new Color(225, 0, 0);
+	full[3] = new Color(77, 121, 255);
+	full[4] = new Color(82, 242, 234);
+	full[5] = new Color(255, 220, 0);
+	full[6] = new Color(138, 77, 255);
+	full[7] = new Color(255, 115, 0, 255);
+	/* Entries 8-39: the wider palette backing the companion dropdown. */
+	for(int i = nquick; i < ncolors; i++)
+	    full[i] = Color.getHSBColor((i - nquick) / (float)(ncolors - nquick), 0.6f, 0.9f);
+	/* Entries 40-254: safety filler only, same fallback gcolor() itself
+	 * uses out of range - Nurgling2 does the same (index 0's colour)
+	 * rather than leaving them null. */
+	for(int i = ncolors; i < full.length; i++)
+	    full[i] = full[0];
+	return(full);
+    }
+
+    public static Color gcolor(int group) {
+	return(((group >= 0) && (group < gc.length)) ? gc[group] : gc[0]);
+    }
+
     private Comparator<Buddy> bcmp;
     private Comparator<Buddy> alphacmp = new Comparator<Buddy>() {
 	private Collator c = Collator.getInstance();
@@ -159,6 +198,16 @@ public class BuddyWnd extends Widget implements Iterable<BuddyWnd.Buddy> {
 	    return(rname);
 	}
 
+	private Text grouptag = null;
+	private int grouptagGroup = Integer.MIN_VALUE;
+	Text grouptag() {
+	    if((grouptag == null) || (grouptagGroup != group)) {
+		grouptag = Text.render("[" + group + "]");
+		grouptagGroup = group;
+	    }
+	    return(grouptag);
+	}
+
 	public Map<String, Runnable> opts() {
 	    Map<String, Runnable> opts = new LinkedHashMap<>();
 	    if(online >= 0) {
@@ -228,12 +277,12 @@ public class BuddyWnd extends Widget implements Iterable<BuddyWnd.Buddy> {
 
     public static class GroupSelector extends Widget {
 	public int group;
-	public GroupRect[] groups = new GroupRect[gc.length];
+	public GroupRect[] groups = new GroupRect[nquick];
 
 	public GroupSelector(int group) {
-	    super(new Coord(gc.length * UI.scale(20), UI.scale(20)));
+	    super(new Coord(nquick * UI.scale(20), UI.scale(20)));
 	    this.group = group;
-	    for (int i = 0; i < gc.length; ++i) {
+	    for (int i = 0; i < nquick; ++i) {
 		groups[i] = new GroupRect(this, i, group == i);
 		add(groups[i], new Coord(i * UI.scale(20), 0));
 	    }
@@ -245,16 +294,26 @@ public class BuddyWnd extends Widget implements Iterable<BuddyWnd.Buddy> {
 	public void update(int group) {
 	    if(group == this.group)
 		return;
-	    if(this.group >= 0)
+	    if((this.group >= 0) && (this.group < groups.length))
 		groups[this.group].unselect();
 	    this.group = group;
-	    if(group >= 0)
+	    if((group >= 0) && (group < groups.length))
 		groups[group].select();
 	}
 
 	public void select(int group) {
 	    update(group);
 	    changed(group);
+	}
+
+	protected void attached() {
+	    super.attached();
+	    haven.groups.GroupSelectorClassifier.attached(this);
+	}
+
+	public void dispose() {
+	    haven.groups.GroupSelectorClassifier.detached(this);
+	    super.dispose();
 	}
     }
 
@@ -269,7 +328,7 @@ public class BuddyWnd extends Widget implements Iterable<BuddyWnd.Buddy> {
 	}
     }
 
-    private class BuddyInfo extends Widget {
+    public class BuddyInfo extends Widget {
 	private final Buddy buddy;
 	private final Avaview ava;
 	private final TextEntry nick;
@@ -393,8 +452,12 @@ public class BuddyWnd extends Widget implements Iterable<BuddyWnd.Buddy> {
 			    g.aimage(online, Coord.of(sz.y / 2), 0.5, 0.5);
 			else if(item.online == 0)
 			    g.aimage(offline, Coord.of(sz.y / 2), 0.5, 0.5);
-			g.chcolor(gc[b.group]);
-			g.aimage(b.rname().tex(), Coord.of(sz.y + UI.scale(5), sz.y / 2), 0.0, 0.5);
+			Coord namec = Coord.of(sz.y + UI.scale(5), sz.y / 2);
+			g.chcolor(gcolor(b.group));
+			g.aimage(b.rname().tex(), namec, 0.0, 0.5);
+			g.chcolor();
+			g.chcolor(210, 210, 210, 255);
+			g.aimage(b.grouptag().tex(), namec.add(b.rname().sz().x + UI.scale(5), 0), 0.0, 0.5);
 			g.chcolor();
 		    }
 

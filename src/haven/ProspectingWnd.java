@@ -120,7 +120,7 @@ public class ProspectingWnd extends Window {
 	String name = markerName(detected);
 	/* Keep bulk prospecting markers off the ground. */
 	file.add(new PMarker(file, loc.seg.id, tc, name,
-			     BuddyWnd.gc[new Random().nextInt(BuddyWnd.gc.length)], false));
+			     BuddyWnd.gc[new Random().nextInt(BuddyWnd.nquick)], false));
 	gui.msg("Marked: " + name, Color.WHITE);
 	mark.disable(true);
     }
