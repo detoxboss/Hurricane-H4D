@@ -110,6 +110,12 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	public Thread keyboundActionThread;
 	public long lastopponent = -1;
 	private long lastAutoDrinkTime = 0;
+	// ND: ski speed-4 restore state - tracked here (not in SkisScript) so it applies no matter how
+	// the player got on skis, not just when SkisScript itself performed the mount.
+	private boolean skiSprinting = false;
+	private boolean skiPendingSpeedRestore = false;
+	private long lastSkiDrinkAttempt = 0;
+	private static final int SKI_SPEED4_INDEX = 3; // Speedget: crawl=0, walk=1, run=2, sprint=3 ("Speed 4")
 	public boolean areaChatLoaded = false;
 	private static ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 	private static Future<?> areaChatFuture;
@@ -1585,6 +1591,53 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	}
     }
 
+    // ND: While on skis, if stamina forces speed 4 ("sprint") down to speed 3 ("run"), remember that
+    // and re-engage speed 4 automatically once stamina allows it again (drinking in the meantime).
+    // Runs every tick regardless of how the player got on skis, driven off Speedget.cur/max - the
+    // same state that greys out the speed buttons in the UI - rather than a fixed delay.
+    private void skiSpeedTick() {
+	Gob player = (map == null) ? null : map.player();
+	if(player == null || !player.imOnSkis) {
+	    skiSprinting = false;
+	    skiPendingSpeedRestore = false;
+	    return;
+	}
+
+	Speedget sg = findchild(Speedget.class);
+	if(sg == null)
+	    return;
+
+	if(sg.cur == SKI_SPEED4_INDEX) {
+	    // Confirmed at speed 4 - nothing pending, whether we got here on our own or via restore.
+	    skiSprinting = true;
+	    skiPendingSpeedRestore = false;
+	} else if(skiSprinting && !skiPendingSpeedRestore) {
+	    // Not currently pending a restore yet, so this drop is either a fresh stamina lockout or a
+	    // deliberate slow-down by the player - tell those apart by whether speed 4 is still allowed.
+	    if(sg.max < SKI_SPEED4_INDEX) {
+		skiPendingSpeedRestore = true;
+	    } else {
+		skiSprinting = false;
+	    }
+	}
+	// Note: once skiPendingSpeedRestore is true, max recovering back to >= SKI_SPEED4_INDEX must
+	// NOT be re-read as a "voluntary slow-down" above - that would cancel the restore in the same
+	// tick it becomes possible, before the block below ever gets to act on it.
+
+	if(skiPendingSpeedRestore) {
+	    if(sg.max < SKI_SPEED4_INDEX) {
+		// Still stamina-locked out of speed 4 - keep trying to help it recover.
+		long now = System.currentTimeMillis();
+		if(!player.imDrinking && now - lastSkiDrinkAttempt > 1000) {
+		    lastSkiDrinkAttempt = now;
+		    wdgmsg("act", "drink");
+		}
+	    } else if(sg.cur != SKI_SPEED4_INDEX) {
+		sg.set(SKI_SPEED4_INDEX);
+	    }
+	}
+    }
+
     private double lastwndsave = 0;
     public void tick(double dt) {
 	super.tick(dt);
@@ -1601,6 +1654,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	    afk = false;
 	}
 	mapfiletick();
+	skiSpeedTick();
 	if(OptWnd.autoDrinkingCheckBox.a && getmeter("stam", 0) != null){
 		float meterFullness = OptWnd.autoDrinkingThresholdTextEntry.text().isEmpty() ? 0.75f : Integer.parseInt(OptWnd.autoDrinkingThresholdTextEntry.text())/100f;
 		if (getmeter("stam", 0).a < meterFullness) {
