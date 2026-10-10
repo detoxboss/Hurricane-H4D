@@ -11,8 +11,9 @@ Feature/system knowledge built up while working in this repo lives in
 doc) so only the relevant piece gets read for a given task. Check that index whenever the task
 touches:
 
-- Pulling in a new NightDawg release / merging upstream
-- Cutting a release of this fork for players
+- Pulling in a new NightDawg release / merging upstream (follow `upstream-merge-workflow.md`;
+  `fork-customization-ledger.md` lists what must survive; past syncs are in `upstream-sync-history/`)
+- Cutting a release of this fork for players (check `fork-maintenance-backlog.md` first)
 - The bottom-right "Custom Client Extras" grid menu (toggles, bots, scripts)
 - Hand-building/editing a `.res` resource file
 - Sending a chat message from bot/script code

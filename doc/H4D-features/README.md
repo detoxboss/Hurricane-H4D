@@ -4,7 +4,10 @@ Small, single-topic files. Read only the ones relevant to the current task — d
 
 | File | Read this when... |
 |---|---|
-| [upstream-merge-workflow.md](upstream-merge-workflow.md) | Pulling in a new NightDawg release / resolving merge conflicts with `upstream`. |
+| [upstream-merge-workflow.md](upstream-merge-workflow.md) | Pulling in a new NightDawg release / resolving merge conflicts with `upstream` (the 4-phase procedure). |
+| [fork-customization-ledger.md](fork-customization-ledger.md) | Deciding what must survive an upstream sync, or recording a new intentional divergence. |
+| [fork-maintenance-backlog.md](fork-maintenance-backlog.md) | Known deferred fork issues (release packaging, inherited workflows, tracked `.db` churn, update checker). Check before cutting a release. |
+| [upstream-sync-history/](upstream-sync-history/) | What happened in past syncs (dated entries, e.g. [2026-10-09](upstream-sync-history/2026-10-09.md)). |
 | [release-process.md](release-process.md) | Cutting a release of *this* fork for players (the `Create Release` Action, why `Release/` is stale/legacy). |
 | [menugrid-system.md](menugrid-system.md) | Adding/changing anything in the bottom-right "Custom Client Extras" grid menu (new toggle, new bot, new script button). |
 | [res-file-binary-format.md](res-file-binary-format.md) | Creating or editing a `.res` file by hand (icon/action/tooltip resource for the menu grid). |
