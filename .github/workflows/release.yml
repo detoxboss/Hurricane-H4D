@@ -11,6 +11,11 @@ on:
         description: "Release version (e.g. 1.0.1) -- becomes the git tag and release title"
         required: true
         type: string
+      prerelease:
+        description: "Mark as a pre-release (beta/test build). Run it on a feature branch to build a test client from that branch."
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -47,4 +52,5 @@ jobs:
             "Hurricane-H4D-${{ inputs.version }}.zip" \
             --title "${{ inputs.version }}" \
             --target "${{ github.sha }}" \
-            --generate-notes
+            --generate-notes \
+            ${{ inputs.prerelease && '--prerelease' || '' }}

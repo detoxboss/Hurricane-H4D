@@ -749,6 +749,8 @@ public class OptWnd extends Window {
 
 	public static OldDropBox uiThemeDropBox;
 	public static CheckBox extendedMouseoverInfoCheckBox;
+	public static CheckBox disable3DPortraitsCheckBox;
+	public static CheckBox hidePortraitSpeedCheckBox;
 	public static CheckBox disableMenuGridHotkeysCheckBox;
 	public static CheckBox alwaysOpenBeltOnLoginCheckBox;
 	public static CheckBox showMapMarkerNamesCheckBox;
@@ -979,6 +981,22 @@ public class OptWnd extends Window {
 			}
 		}, leftColumn.pos("bl").adds(0, 2));
 		transparentQuestsObjectivesWindowCheckBox.tooltip = transparentQuestsObjectivesWindowTooltip;
+
+		leftColumn = add(disable3DPortraitsCheckBox = new CheckBox("Disable 3D Portraits (Performance)"){
+			{a = (Utils.getprefb("disable3DPortraits", false));}
+			public void changed(boolean val) {
+				Utils.setprefb("disable3DPortraits", val);
+				Avaview.disable3DPortraits = val;
+			}
+		}, leftColumn.pos("bl").adds(0, 2));
+		disable3DPortraitsCheckBox.tooltip = disable3DPortraitsTooltip;
+		leftColumn = add(hidePortraitSpeedCheckBox = new CheckBox("Hide Speed on Portraits"){
+			{a = (Utils.getprefb("hidePortraitSpeed", false));}
+			public void changed(boolean val) {
+				Utils.setprefb("hidePortraitSpeed", val);
+				Avaview.hidePortraitSpeed = val;
+			}
+		}, leftColumn.pos("bl").adds(0, 2));
 
 		Widget rightColumn;
         rightColumn = add(new Label("UI Theme (Req. Restart):"), UI.scale(230, 2));
@@ -5302,7 +5320,11 @@ public class OptWnd extends Window {
             "\nThe Custom Theme folder can be found in your $col[218,163,0]{client folder}, under $col[218,163,0]{\\ res \\ customclient \\ uiThemes \\ Custom Theme}" +
             "\n" +
             "\n$col[185,185,185]{You don't need to change *everything* for the Custom Theme to work. If it's missing something, it just defaults to whatever the \"Nightdawg Dark\" theme uses.}", UI.scale(300));
-	private static final Object extendedMouseoverInfoTooltip = RichText.render("This setting adds additional info to:" +
+	private static final Object disable3DPortraitsTooltip = RichText.render("Replaces every 3D character portrait with a flat placeholder: your own portrait, Party members, combat opponents, Kith & Kin and the Equipment window." +
+			"\nEach 3D portrait is a whole extra scene rendered every frame, which gets very expensive in big parties and large fights." +
+			"\n" +
+			"\n$col[185,185,185]{Party members can still be told apart by their colored frames.}", UI.scale(300));
+	private static final Object extendedMouseoverInfoTooltip =RichText.render("This setting adds additional info to:" +
 			"\n- Object Ctrl+Shift Mouseover Info (Adds lots of info)" +
 			"\n- Item Tooltips (Shows Resource Name)" +
 			"\n- Action Button Tooltips (Shows Resource Name)" +
