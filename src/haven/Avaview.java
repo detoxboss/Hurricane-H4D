@@ -47,6 +47,12 @@ public class Avaview extends PView {
     private final String camnm;
 	private final Coord speedCoord;
 	public boolean drawv = true;
+	// ND: Each 3D portrait is a full extra scene render (own RenderTree, skeleton and lights), which gets very expensive
+	// with big parties. When this is on, portraits draw a flat placeholder instead. Updated live from OptWnd.
+	public static boolean disable3DPortraits = Utils.getprefb("disable3DPortraits", false);
+	public static boolean hidePortraitSpeed = Utils.getprefb("hidePortraitSpeed", false);
+	private double speedTexVal = -1;
+	private Tex speedTex;
 
     @RName("av")
     public static class $_ implements Factory {
@@ -227,7 +233,7 @@ public class Avaview extends PView {
 
     public void tick(double dt) {
 	super.tick(dt);
-	if(comp != null) {
+	if(comp != null && !disable3DPortraits) {
 	    comp.tick(dt);
 	    if(nposes != null) {
 		try {
@@ -266,17 +272,27 @@ public class Avaview extends PView {
 	} catch(Loading e) {
 	}
 	if(!drawn) {
-	    try {
-		updcomp();
-		super.draw(g);
-	    } catch(Loading e) {
+	    if(disable3DPortraits) {
 		g.image(missing, Coord.z, sz);
+	    } else {
+		try {
+		    updcomp();
+		    super.draw(g);
+		} catch(Loading e) {
+		    g.image(missing, Coord.z, sz);
+		}
 	    }
 	}
 	if (gob != null) {
-		if (drawv && gob.gobSpeed > 0)
-			//g.text(String.format("%.2f u/s", gob.gobSpeed), speedCoord);
-			g.aimage(PUtils.strokeTex(Text.renderstroked(String.format("%.2f u/s", gob.gobSpeed))), speedCoord, 0, 0); // ND: stroked text. Previous (unstroked) line was killing my framerate, idk why.
+		if (drawv && !hidePortraitSpeed && gob.gobSpeed > 0) {
+			// ND: Rebuilding the stroked text image and texture every frame for every portrait was killing the framerate in big parties, so only rebuild it when the speed changes.
+			double speed = gob.gobSpeed;
+			if (speedTex == null || speed != speedTexVal) {
+				speedTex = PUtils.strokeTex(Text.renderstroked(String.format("%.2f u/s", speed)));
+				speedTexVal = speed;
+			}
+			g.aimage(speedTex, speedCoord, 0, 0);
+		}
 	}
     }
 

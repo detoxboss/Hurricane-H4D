@@ -99,6 +99,24 @@ public class Partyview extends Widget {
 	}
     }
 
+    /* ND: Only the gobs of players who were or are in the party can carry party overlays (gobs that load later set
+     * themselves up in Gob init), so refresh just those instead of sweeping every loaded gob under the OCache lock,
+     * which was very slow with big parties and lots of objects around. */
+    private void refreshPartyOverlays(Map<Long, Member> prev, Map<Long, Member> cur) {
+	if(ui == null || ui.gui == null)
+	    return;
+	Set<Long> ids = new HashSet<>(cur.keySet());
+	if(prev != null)
+	    ids.addAll(prev.keySet());
+	for(Long id : ids) {
+	    Gob gob = ui.sess.glob.oc.getgob(id);
+	    if(gob != null) {
+		gob.updatePartyCircleOverlay();
+		gob.updatePartyHighlightOverlay();
+	    }
+	}
+    }
+
     private void update() {
 	int asz = (sz.x - 2 * marg) / 3;
 	if(party.memb != this.om) {
@@ -125,14 +143,12 @@ public class Partyview extends Widget {
 		avs.get(m).move(leave.pos("bl").add((i % 3) * (asz + marg),(i / 3) * (asz + marg) + marg));
 		i++;
 	    }
+	    Map<Long, Member> prevMemb = this.om;
 	    this.om = party.memb;
 	    this.avs = avs;
 	    if(leave.show(!avs.isEmpty()))
 		pack();
-        if (ui != null && ui.gui != null) {
-            ui.sess.glob.oc.gobAction(Gob::updatePartyCircleOverlay);
-            ui.sess.glob.oc.gobAction(Gob::updatePartyHighlightOverlay);
-        }
+	    refreshPartyOverlays(prevMemb, party.memb);
 	}
 	for(Map.Entry<Member, MemberView> e : avs.entrySet())
 	    e.getValue().color = e.getKey().col;
@@ -191,15 +207,12 @@ public class Partyview extends Widget {
 	    }
 	    party.memb = nmemb;
 	    updsteam();
-	    if (ui != null && ui.gui != null) {
+	    if (nmemb.size() <= 1 && ui != null && ui.gui != null) { // ND: Gob.updateLeaderPingArrow only does anything when the party is gone/empty.
 		ui.sess.glob.oc.gobAction(Gob::updateLeaderPingArrow);
 	    }
 	} else if(msg == "ldr") {
 	    party.leader = party.memb.get(Utils.uiv(args[0]));
-        if (ui != null && ui.gui != null) {
-            ui.sess.glob.oc.gobAction(Gob::updatePartyCircleOverlay);
-            ui.sess.glob.oc.gobAction(Gob::updatePartyHighlightOverlay);
-        }
+	    refreshPartyOverlays(null, party.memb);
 	} else if(msg == "m") {
 	    int a = 0;
 	    Member m = party.memb.get(Utils.uiv(args[a++]));
@@ -226,6 +239,7 @@ public class Partyview extends Widget {
     public void dispose() {
 	/* XXX: Arguably, glob.party should be removed entirely, but
 	 * until then, at least clear it when logging out. */
+	Map<Long, Member> leaving = party.memb;
 	party.memb = Collections.emptyMap();
 	party.leader = null;
 
@@ -237,10 +251,7 @@ public class Partyview extends Widget {
 	    GameUI.leaderTargetPing = -1;
 	}
 
-        if (ui != null && ui.gui != null) {
-            ui.sess.glob.oc.gobAction(Gob::updatePartyCircleOverlay);
-            ui.sess.glob.oc.gobAction(Gob::updatePartyHighlightOverlay);
-        }
+	refreshPartyOverlays(leaving, party.memb);
 	super.dispose();
     }
 }
